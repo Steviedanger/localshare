@@ -1,0 +1,8 @@
+// Axios instance for REST API calls
+
+import axios from 'axios';
+
+export const api = axios.create({
+  baseURL: '/api',
+  timeout: 30_000,
+});

@@ -1,0 +1,51 @@
+// LocalShare database schema
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// One row per device/user that has ever connected
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  socketId  String?  // null when offline; updated on connect/disconnect
+  lastSeen  DateTime @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+
+  sentTransfers     Transfer[] @relation("Sender")
+  receivedTransfers Transfer[] @relation("Receiver")
+
+  @@map("users")
+}
+
+// One row per file transfer attempt
+model Transfer {
+  id          String         @id @default(uuid())
+  filename    String
+  mimeType    String
+  sizeBytes   BigInt
+  storagePath String         // absolute path on hub disk
+  status      TransferStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  completedAt DateTime?
+
+  senderId   String
+  receiverId String
+  sender     User   @relation("Sender",   fields: [senderId],   references: [id])
+  receiver   User   @relation("Receiver", fields: [receiverId], references: [id])
+
+  @@map("transfers")
+}
+
+enum TransferStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
