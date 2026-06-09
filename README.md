@@ -18,7 +18,7 @@ No internet. No cloud. No accounts.
 ## Tech stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
 | Frontend | React 18 + TypeScript + Vite |
 | Backend | Node.js + Express + TypeScript |
 | Real-time | Socket.IO v4 |

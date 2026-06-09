@@ -1,5 +1,8 @@
-// Type-safe environment variable parsing with Zod
 import { z } from 'zod';
+import dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const EnvSchema = z.object({
   PORT: z.coerce.number().default(3001),
@@ -7,10 +10,9 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
   UPLOAD_DIR: z.string().default('uploads'),
   MAX_FILE_SIZE_MB: z.coerce.number().default(500),
-  CORS_ORIGINS: z.string().default(''),
+  CORS_ORIGIN: z.string().default('http://localhost:5173'),
 });
 
-// Throws at startup if any required env var is missing
 const parsed = EnvSchema.safeParse(process.env);
 
 if (!parsed.success) {
