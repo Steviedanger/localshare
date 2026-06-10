@@ -1,5 +1,3 @@
-// Shared domain types used across the backend
-
 export interface Device {
   id: string;
   username: string;
@@ -40,12 +38,13 @@ export interface TransferComplete {
 
 export interface ServerToClientEvents {
   'device:list': (devices: Device[]) => void;
+  'user:welcome': (payload: { userId: string; username: string }) => void;
+  'user:renamed': (payload: { userId: string; username: string }) => void;
   'message:receive': (message: Message) => void;
   'transfer:incoming': (meta: TransferMeta) => void;
   'transfer:progress': (progress: TransferProgress) => void;
   'transfer:complete': (complete: TransferComplete) => void;
   'transfer:failed': (payload: { transferId: string; error: string }) => void;
-  'user:renamed': (payload: { userId: string; username: string }) => void;
   error: (message: string) => void;
 }
 

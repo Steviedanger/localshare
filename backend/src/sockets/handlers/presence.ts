@@ -1,6 +1,3 @@
-// Presence handlers: join, leave, device list broadcast
-// The in-memory deviceMap is the authoritative list of online devices
-
 import { Server, Socket } from 'socket.io';
 import { prisma } from '../../db/prisma';
 import {
@@ -17,13 +14,11 @@ type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerE
 // In-memory map of socketId -> Device (online devices only)
 export const deviceMap = new Map<string, Device>();
 
-/** Broadcast the current online device list to every connected socket */
 export function broadcastDeviceList(io: IO): void {
   const devices = Array.from(deviceMap.values());
   io.emit('device:list', devices);
 }
 
-/** Handle a new socket joining — creates or updates the user in the DB */
 export async function handleJoin(
   io: IO,
   socket: AppSocket,
@@ -31,14 +26,12 @@ export async function handleJoin(
 ): Promise<void> {
   const { username } = payload;
 
-  // Upsert user in DB — if userId provided try to reuse it
   let user = payload.userId
     ? await prisma.user.findUnique({ where: { id: payload.userId } })
     : null;
 
   if (!user) {
-    // Generate a unique username if taken
-    let finalUsername = username;
+    let finalUsername = username || `Device-${socket.id.slice(0, 4).toUpperCase()}`;
     let suffix = 1;
     while (await prisma.user.findUnique({ where: { username: finalUsername } })) {
       finalUsername = `${username}${suffix++}`;
@@ -49,15 +42,13 @@ export async function handleJoin(
   } else {
     user = await prisma.user.update({
       where: { id: user.id },
-      data: { socketId: socket.id, username },
+      data: { socketId: socket.id, username: username || user.username },
     });
   }
 
-  // Attach to socket for quick access in other handlers
   socket.data.userId = user.id;
   socket.data.username = user.username;
 
-  // Add to in-memory device map
   deviceMap.set(socket.id, {
     id: user.id,
     username: user.username,
@@ -65,28 +56,28 @@ export async function handleJoin(
     lastSeen: new Date().toISOString(),
   });
 
+  // Tell THIS socket who they are
+  socket.emit('user:welcome', { userId: user.id, username: user.username });
+
   console.log(`✅ ${user.username} joined (socket: ${socket.id})`);
   broadcastDeviceList(io);
 }
 
-/** Handle disconnect — remove from device map and clear socketId in DB */
 export async function handleDisconnect(io: IO, socket: AppSocket): Promise<void> {
   const device = deviceMap.get(socket.id);
   if (!device) return;
 
   deviceMap.delete(socket.id);
 
-  // Mark user as offline in DB
   await prisma.user.update({
     where: { id: device.id },
     data: { socketId: null },
-  }).catch(() => {}); // Don't crash if user was deleted
+  }).catch(() => {});
 
   console.log(`👋 ${device.username} disconnected`);
   broadcastDeviceList(io);
 }
 
-/** Handle username rename */
 export async function handleRename(
   io: IO,
   socket: AppSocket,
@@ -107,7 +98,6 @@ export async function handleRename(
 
     await prisma.user.update({ where: { id: userId }, data: { username: trimmed } });
 
-    // Update in-memory map
     const device = deviceMap.get(socket.id);
     if (device) {
       device.username = trimmed;
@@ -116,7 +106,7 @@ export async function handleRename(
 
     io.emit('user:renamed', { userId, username: trimmed });
     broadcastDeviceList(io);
-  } catch (err) {
+  } catch (_err) {
     socket.emit('error', 'Rename failed');
   }
 }

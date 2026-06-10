@@ -1,10 +1,3 @@
-/**
- * hooks/useFileUpload.ts
- * Handles the full send-file flow:
- * 1. Emit transfer:start over socket (alerts recipient)
- * 2. POST file to /api/upload with axios progress tracking
- * 3. Update transfer store on progress and completion
- */
 import { v4 as uuidv4 } from 'uuid';
 import { socket } from '../socket';
 import { api } from '../api';
@@ -20,8 +13,8 @@ export function useFileUpload() {
 
     const transferId = uuidv4();
 
-    // Announce the transfer to the recipient via socket
-    socket.emit('transfer:start', {
+    // 1. Notify recipient via socket that a file is coming
+    socket.emit('transfer:notify', {
       transferId,
       toId,
       filename: file.name,
@@ -29,7 +22,7 @@ export function useFileUpload() {
       sizeBytes: file.size,
     });
 
-    // Add to our own transfer list immediately
+    // 2. Add to our own transfer list immediately
     addTransfer({
       id: transferId,
       filename: file.name,
@@ -44,13 +37,14 @@ export function useFileUpload() {
     });
 
     try {
+      // 3. POST the file via HTTP with progress tracking
       const formData = new FormData();
       formData.append('file', file);
       formData.append('transferId', transferId);
       formData.append('senderId', self.userId);
       formData.append('receiverId', toId);
 
-      await api.post('/upload', formData, {
+      await api.post('/files/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (event) => {
           if (event.total) {
@@ -59,7 +53,7 @@ export function useFileUpload() {
           }
         },
       });
-      // transfer:complete is emitted by the server via socket — store update happens there
+      // transfer:complete arrives via socket from the server
     } catch (err) {
       failTransfer(transferId);
       throw err;

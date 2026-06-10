@@ -13,11 +13,7 @@ export const MessageInput: React.FC<Props> = ({ toId }) => {
   function send() {
     const trimmed = text.trim();
     if (!trimmed || !self) return;
-    socket.emit('message:send', {
-      toId,
-      text: trimmed,
-      timestamp: new Date().toISOString(),
-    });
+    socket.emit('message:send', { toId, text: trimmed });
     setText('');
   }
 

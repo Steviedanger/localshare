@@ -1,8 +1,3 @@
-/**
- * hooks/useSocket.ts
- * Connects the socket on mount, sends user:join, and wires all incoming events
- * to the appropriate Zustand stores.
- */
 import { useEffect } from 'react';
 import { socket } from '../socket';
 import { useDeviceStore } from '../store/useDeviceStore';
@@ -18,30 +13,33 @@ export function useSocket() {
   const { addTransfer, updateProgress, completeTransfer, failTransfer } = useTransferStore();
 
   useEffect(() => {
-    // ── Register event listeners ────────────────────────────────────────────
-
+    // user:welcome — server confirms our identity after join
     socket.on('user:welcome', ({ userId, username }) => {
-      // Persist identity across page refreshes
       localStorage.setItem(USER_ID_KEY, userId);
       localStorage.setItem(USERNAME_KEY, username);
       setSelf({ userId, username });
     });
 
-    socket.on('device:list', setDevices);
+    // device:list — full refreshed list of online devices
+    socket.on('device:list', (devices) => {
+      setDevices(devices);
+    });
 
+    // user:renamed — someone changed their name
     socket.on('user:renamed', ({ userId, username }) => {
       updateUsername(userId, username);
     });
 
+    // message:receive — a message arrived
     socket.on('message:receive', (message) => {
-      // Store under the peer's ID (works for both sent and received)
       const self = useDeviceStore.getState().self;
-      const peerId = message.fromId === self?.userId ? message.toId : message.fromId;
+      const peerId =
+        message.fromId === self?.userId ? message.toId : message.fromId;
       addMessage(peerId, message);
     });
 
+    // transfer:incoming — someone is sending us a file
     socket.on('transfer:incoming', (meta) => {
-      const self = useDeviceStore.getState().self;
       addTransfer({
         id: meta.id,
         filename: meta.filename,
@@ -54,8 +52,6 @@ export function useSocket() {
         peerUsername: meta.senderUsername,
         timestamp: new Date().toISOString(),
       });
-      // Suppress unused variable warning
-      void self;
     });
 
     socket.on('transfer:progress', ({ transferId, percent }) => {
@@ -66,17 +62,18 @@ export function useSocket() {
       completeTransfer(transferId, downloadUrl);
     });
 
-    socket.on('transfer:error', ({ transferId }) => {
+    socket.on('transfer:failed', ({ transferId }) => {
       failTransfer(transferId);
     });
 
-    // ── Connect ─────────────────────────────────────────────────────────────
-
+    // Connect and announce ourselves
     socket.connect();
 
     socket.on('connect', () => {
       const storedUserId = localStorage.getItem(USER_ID_KEY) ?? undefined;
-      const storedUsername = localStorage.getItem(USERNAME_KEY) ?? `Device-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      const storedUsername =
+        localStorage.getItem(USERNAME_KEY) ??
+        `Device-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
       socket.emit('user:join', {
         userId: storedUserId,
@@ -84,7 +81,6 @@ export function useSocket() {
       });
     });
 
-    // ── Cleanup ──────────────────────────────────────────────────────────────
     return () => {
       socket.off('user:welcome');
       socket.off('device:list');
@@ -93,7 +89,7 @@ export function useSocket() {
       socket.off('transfer:incoming');
       socket.off('transfer:progress');
       socket.off('transfer:complete');
-      socket.off('transfer:error');
+      socket.off('transfer:failed');
       socket.off('connect');
       socket.disconnect();
     };
