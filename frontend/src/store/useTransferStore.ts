@@ -1,51 +1,47 @@
-// Zustand store: file transfers (in-progress + completed)
-
 import { create } from 'zustand';
 import { Transfer } from '../types';
 
 interface TransferState {
-  transfers: Record<string, Transfer>; // keyed by transferId
+  transfers: Transfer[];
 
   addTransfer: (transfer: Transfer) => void;
   updateProgress: (transferId: string, percent: number) => void;
-  markComplete: (transferId: string, downloadUrl: string) => void;
-  markFailed: (transferId: string, error: string) => void;
+  completeTransfer: (transferId: string, downloadUrl: string) => void;
+  failTransfer: (transferId: string) => void;
 }
 
 export const useTransferStore = create<TransferState>((set) => ({
-  transfers: {},
+  transfers: [],
 
   addTransfer: (transfer) =>
     set((state) => ({
-      transfers: { ...state.transfers, [transfer.id]: transfer },
+      transfers: [transfer, ...state.transfers],
     })),
 
   updateProgress: (transferId, percent) =>
     set((state) => ({
-      transfers: {
-        ...state.transfers,
-        [transferId]: { ...state.transfers[transferId], percent, status: 'uploading' },
-      },
+      transfers: state.transfers.map((t) =>
+        t.id === transferId
+          ? { ...t, progress: percent, status: 'uploading' as const }
+          : t
+      ),
     })),
 
-  markComplete: (transferId, downloadUrl) =>
+  completeTransfer: (transferId, downloadUrl) =>
     set((state) => ({
-      transfers: {
-        ...state.transfers,
-        [transferId]: {
-          ...state.transfers[transferId],
-          status: 'complete',
-          percent: 100,
-          downloadUrl,
-        },
-      },
+      transfers: state.transfers.map((t) =>
+        t.id === transferId
+          ? { ...t, progress: 100, status: 'completed' as const, downloadUrl }
+          : t
+      ),
     })),
 
-  markFailed: (transferId, _error) =>
+  failTransfer: (transferId) =>
     set((state) => ({
-      transfers: {
-        ...state.transfers,
-        [transferId]: { ...state.transfers[transferId], status: 'failed' },
-      },
+      transfers: state.transfers.map((t) =>
+        t.id === transferId
+          ? { ...t, status: 'failed' as const }
+          : t
+      ),
     })),
 }));

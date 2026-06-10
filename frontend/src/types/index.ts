@@ -1,5 +1,3 @@
-// Frontend domain types
-
 export interface Device {
   id: string;
   username: string;
@@ -16,9 +14,7 @@ export interface Message {
   timestamp: string;
 }
 
-export type TransferStatus = 'pending' | 'uploading' | 'complete' | 'failed';
-
-export interface Transfer {
+export interface TransferMeta {
   id: string;
   filename: string;
   mimeType: string;
@@ -26,9 +22,20 @@ export interface Transfer {
   senderId: string;
   senderUsername: string;
   receiverId: string;
+}
+
+export type TransferStatus = 'pending' | 'uploading' | 'completed' | 'failed';
+
+export interface Transfer {
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
   status: TransferStatus;
-  percent: number;
+  progress: number;
   downloadUrl?: string;
   direction: 'sent' | 'received';
+  peerId: string;
+  peerUsername: string;
   timestamp: string;
 }

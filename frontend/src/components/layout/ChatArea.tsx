@@ -10,6 +10,8 @@ export const ChatArea: React.FC = () => {
   const { devices, selectedDeviceId } = useDeviceStore();
   const peer = devices.find((d) => d.id === selectedDeviceId);
 
+  console.log('ChatArea:', { devices, selectedDeviceId, peer });
+
   // Nothing selected
   if (!peer) {
     return (

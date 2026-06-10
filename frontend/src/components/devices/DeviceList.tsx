@@ -4,6 +4,8 @@ import { useDeviceStore } from '../../store/useDeviceStore';
 import { useMessageStore } from '../../store/useMessageStore';
 
 export const DeviceList: React.FC = () => {
+    console.log('DeviceList rendering');
+
   const { devices, self, selectedDeviceId, setSelectedDevice } = useDeviceStore();
   const { unreadCounts, markRead } = useMessageStore();
 

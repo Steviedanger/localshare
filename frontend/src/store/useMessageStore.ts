@@ -1,19 +1,16 @@
-// Zustand store: chat messages, keyed by the OTHER party's userId
-// e.g. messages['abc-123'] = all messages in the conversation with device abc-123
-
 import { create } from 'zustand';
 import { Message } from '../types';
 
 interface MessageState {
-  // conversationId = the other party's userId
   conversations: Record<string, Message[]>;
   unreadCounts: Record<string, number>;
 
   addMessage: (conversationId: string, message: Message) => void;
   markRead: (conversationId: string) => void;
+  getMessages: (conversationId: string) => Message[];
 }
 
-export const useMessageStore = create<MessageState>((set) => ({
+export const useMessageStore = create<MessageState>((set, get) => ({
   conversations: {},
   unreadCounts: {},
 
@@ -21,7 +18,14 @@ export const useMessageStore = create<MessageState>((set) => ({
     set((state) => ({
       conversations: {
         ...state.conversations,
-        [conversationId]: [...(state.conversations[conversationId] ?? []), message],
+        [conversationId]: [
+          ...(state.conversations[conversationId] ?? []),
+          message,
+        ],
+      },
+      unreadCounts: {
+        ...state.unreadCounts,
+        [conversationId]: (state.unreadCounts[conversationId] ?? 0) + 1,
       },
     })),
 
@@ -29,4 +33,7 @@ export const useMessageStore = create<MessageState>((set) => ({
     set((state) => ({
       unreadCounts: { ...state.unreadCounts, [conversationId]: 0 },
     })),
+
+  getMessages: (conversationId) =>
+    get().conversations[conversationId] ?? [],
 }));
