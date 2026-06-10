@@ -40,7 +40,8 @@ export const DeviceCard: React.FC<Props> = ({
           (e.currentTarget.style.background = 'transparent');
       }}
     >
-      <Avatar username={device.username} size={34} online={true} />
+      {/* Avatar has the green online dot built in — no separate indicator needed */}
+      <Avatar username={device.username} size={34} online={!isSelf} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span
@@ -57,14 +58,16 @@ export const DeviceCard: React.FC<Props> = ({
             {device.username}
           </span>
           {isSelf && (
-            <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <span style={{
+              fontSize: 10,
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)',
+            }}>
               you
             </span>
           )}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-          online
-        </div>
+        {/* Removed redundant "online" text — the green dot on the avatar is enough */}
       </div>
       {unreadCount > 0 && !isSelected && (
         <span
