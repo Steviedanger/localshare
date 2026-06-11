@@ -2,17 +2,16 @@ import { Router, Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { prisma } from '../db/prisma';
-import { upload, uploadDir } from '../middleware/upload';
+import { upload } from '../middleware/upload';
 import { notifyTransferComplete } from '../sockets/handlers/transfer';
 import { AppIO } from '../sockets';
 
 export const filesRouter = Router();
 
-// Inject io instance so the upload route can emit socket events
 let _io: AppIO;
 export function setIO(io: AppIO) { _io = io; }
 
-// Upload a file and record the transfer in the database
+// POST /api/files/upload
 filesRouter.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
@@ -25,7 +24,6 @@ filesRouter.post('/upload', upload.single('file'), async (req: Request, res: Res
       return res.status(400).json({ error: 'Missing senderId, receiverId, or transferId' });
     }
 
-    // Upsert transfer record
     const transfer = await prisma.transfer.upsert({
       where: { id: transferId },
       create: {
@@ -46,28 +44,58 @@ filesRouter.post('/upload', upload.single('file'), async (req: Request, res: Res
       },
     });
 
+    // Use preview URL as the primary URL — inline preview works,
+    // and the Save button will use the download URL separately
+    const previewUrl  = `/api/files/preview/${transfer.id}`;
     const downloadUrl = `/api/files/download/${transfer.id}`;
 
-    // Notify both sender and receiver via socket that the transfer is done
     if (_io) {
       notifyTransferComplete(
         _io,
         transferId,
-        downloadUrl,
+        previewUrl,   // sent as downloadUrl to the socket — TransferItem uses this for img src
         req.file.originalname,
         senderId,
         receiverId,
       );
     }
 
-    res.json({ transferId: transfer.id, downloadUrl, filename: req.file.originalname });
+    res.json({
+      transferId: transfer.id,
+      previewUrl,
+      downloadUrl,
+      filename: req.file.originalname,
+    });
   } catch (err) {
     console.error('Upload error:', err);
     res.status(500).json({ error: 'Upload failed' });
   }
 });
 
-// Stream a file to the client for download
+// GET /api/files/preview/:id
+// Streams the file inline — no Content-Disposition: attachment
+// Used by img, video, and iframe tags for inline preview
+filesRouter.get('/preview/:id', async (req: Request, res: Response) => {
+  try {
+    const transfer = await prisma.transfer.findUnique({ where: { id: req.params.id } });
+    if (!transfer) return res.status(404).json({ error: 'Transfer not found' });
+
+    if (!fs.existsSync(transfer.storagePath)) {
+      return res.status(404).json({ error: 'File no longer available on disk' });
+    }
+
+    // inline — browser renders it, does NOT trigger download
+    res.setHeader('Content-Disposition', `inline; filename="${transfer.filename}"`);
+    res.setHeader('Content-Type', transfer.mimeType);
+    res.setHeader('Content-Length', transfer.sizeBytes.toString());
+    fs.createReadStream(transfer.storagePath).pipe(res);
+  } catch (err) {
+    res.status(500).json({ error: 'Preview failed' });
+  }
+});
+
+// GET /api/files/download/:id
+// Forces a download — used by the Save button only
 filesRouter.get('/download/:id', async (req: Request, res: Response) => {
   try {
     const transfer = await prisma.transfer.findUnique({ where: { id: req.params.id } });
@@ -77,6 +105,7 @@ filesRouter.get('/download/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'File no longer available on disk' });
     }
 
+    // attachment — forces browser download dialog
     res.setHeader('Content-Disposition', `attachment; filename="${transfer.filename}"`);
     res.setHeader('Content-Type', transfer.mimeType);
     res.setHeader('Content-Length', transfer.sizeBytes.toString());
@@ -86,7 +115,7 @@ filesRouter.get('/download/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Get transfer history for a user
+// GET /api/files/history/:userId
 filesRouter.get('/history/:userId', async (req: Request, res: Response) => {
   try {
     const transfers = await prisma.transfer.findMany({

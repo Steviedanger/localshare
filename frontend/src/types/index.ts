@@ -33,6 +33,7 @@ export interface Transfer {
   sizeBytes: number;
   status: TransferStatus;
   progress: number;
+  previewUrl?: string;
   downloadUrl?: string;
   direction: 'sent' | 'received';
   peerId: string;

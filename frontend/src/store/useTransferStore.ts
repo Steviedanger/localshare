@@ -31,7 +31,11 @@ export const useTransferStore = create<TransferState>((set) => ({
     set((state) => ({
       transfers: state.transfers.map((t) =>
         t.id === transferId
-          ? { ...t, progress: 100, status: 'completed' as const, downloadUrl }
+          ? { ...t, 
+              progress: 100,
+              status: 'completed' as const,
+              previewUrl: downloadUrl,
+              downloadUrl: downloadUrl.replace('/preview/', '/download/') }
           : t
       ),
     })),

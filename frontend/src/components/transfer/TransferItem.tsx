@@ -22,7 +22,7 @@ const STATUS_ICON: Record<Transfer['status'], string> = {
 
 function isImage(mimeType: string) { return mimeType.startsWith('image/'); }
 function isVideo(mimeType: string) { return mimeType.startsWith('video/'); }
-function isPDF(mimeType: string) { return mimeType === 'application/pdf'; }
+function isPDF(mimeType: string)   { return mimeType === 'application/pdf'; }
 function canPreview(mimeType: string) {
   return isImage(mimeType) || isVideo(mimeType) || isPDF(mimeType);
 }
@@ -30,12 +30,13 @@ function canPreview(mimeType: string) {
 export const TransferItem: React.FC<Props> = ({ transfer }) => {
   const [expanded, setExpanded] = useState(true);
 
-  const icon =
-    transfer.direction === 'received' ? '📥' : STATUS_ICON[transfer.status];
+  const icon = transfer.direction === 'received'
+    ? '📥'
+    : STATUS_ICON[transfer.status];
 
   const showPreview =
     transfer.status === 'completed' &&
-    !!transfer.downloadUrl &&
+    !!transfer.previewUrl &&
     canPreview(transfer.mimeType);
 
   return (
@@ -51,14 +52,7 @@ export const TransferItem: React.FC<Props> = ({ transfer }) => {
       }}
     >
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '10px 12px',
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px' }}>
         <span style={{ fontSize: 15 }}>{icon}</span>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -75,13 +69,7 @@ export const TransferItem: React.FC<Props> = ({ transfer }) => {
           >
             {transfer.filename}
           </div>
-          <div
-            style={{
-              fontSize: 11,
-              color: 'var(--text-muted)',
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
             {formatBytes(transfer.sizeBytes)}
             {' · '}
             {transfer.direction === 'sent'
@@ -90,14 +78,7 @@ export const TransferItem: React.FC<Props> = ({ transfer }) => {
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: 6,
-            alignItems: 'center',
-            flexShrink: 0,
-          }}
-        >
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
           {showPreview && (
             <button
               onClick={() => setExpanded((v) => !v)}
@@ -137,13 +118,7 @@ export const TransferItem: React.FC<Props> = ({ transfer }) => {
           )}
 
           {transfer.status === 'failed' && (
-            <span
-              style={{
-                fontSize: 11,
-                color: 'var(--accent-red)',
-                fontFamily: 'var(--font-mono)',
-              }}
-            >
+            <span style={{ fontSize: 11, color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
               failed
             </span>
           )}
@@ -157,8 +132,8 @@ export const TransferItem: React.FC<Props> = ({ transfer }) => {
         </div>
       )}
 
-      {/* Inline preview */}
-      {showPreview && expanded && transfer.downloadUrl && (
+      {/* Inline preview — uses previewUrl, NOT downloadUrl */}
+      {showPreview && expanded && transfer.previewUrl && (
         <div
           style={{
             borderTop: '1px solid var(--border)',
@@ -172,26 +147,21 @@ export const TransferItem: React.FC<Props> = ({ transfer }) => {
         >
           {isImage(transfer.mimeType) && (
             <img
-              src={transfer.downloadUrl}
+              src={transfer.previewUrl}
               alt={transfer.filename}
-              style={{
-                maxWidth: '100%',
-                maxHeight: 400,
-                objectFit: 'contain',
-                display: 'block',
-              }}
+              style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain', display: 'block' }}
             />
           )}
           {isVideo(transfer.mimeType) && (
             <video
-              src={transfer.downloadUrl}
+              src={transfer.previewUrl}
               controls
               style={{ maxWidth: '100%', maxHeight: 400, display: 'block' }}
             />
           )}
           {isPDF(transfer.mimeType) && (
             <iframe
-              src={transfer.downloadUrl}
+              src={transfer.previewUrl}
               title={transfer.filename}
               style={{ width: '100%', height: 400, border: 'none' }}
             />
