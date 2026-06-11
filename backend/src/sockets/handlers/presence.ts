@@ -42,7 +42,7 @@ export async function handleJoin(
   } else {
     user = await prisma.user.update({
       where: { id: user.id },
-      data: { socketId: socket.id, username: username || user.username },
+      data: { socketId: socket.id, },
     });
   }
 
